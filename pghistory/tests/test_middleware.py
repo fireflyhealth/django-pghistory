@@ -39,11 +39,11 @@ def test_middleware(rf, mocker):
     def get_response(request):
         return getattr(pghistory.tracking._tracker, 'value', None)
 
+    # A GET request will initiate the tracker
     resp = pghistory.middleware.HistoryMiddleware(get_response)(
         rf.get('/get/url/')
     )
-    # No tracking should be happening since this is a GET request
-    assert resp is None
+    assert resp.metadata == {'url': '/get/url/', 'user': None}
 
     # A POST request will initiate the tracker
     resp = pghistory.middleware.HistoryMiddleware(get_response)(
@@ -58,6 +58,13 @@ def test_middleware(rf, mocker):
     request.user = mock_user
     resp = pghistory.middleware.HistoryMiddleware(get_response)(request)
     assert resp.metadata == {'url': '/post/url2/', 'user': mock_user_id}
+
+    # GET requests initiate the tracker
+    get_url = '/get/url/'
+    request = rf.get(get_url)
+    request.user = mock_user
+    resp = pghistory.middleware.HistoryMiddleware(get_response)(request)
+    assert resp.metadata == {'url': get_url, 'user': mock_user_id}
 
     # PATCH requests initiate the tracker
     patch_url = '/patch/url/'
